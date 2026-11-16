@@ -1,0 +1,2 @@
+same text: True | length: 3048890
++= time: 0.0102 s join time: 0.0035 s

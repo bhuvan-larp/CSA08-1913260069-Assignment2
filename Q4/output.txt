@@ -1,0 +1,44 @@
+=== PART A: prediction (before running) ===
+PREDICTED: (b) join and (c) f-string+join are fastest and grow in step with the number of lines, O(n).
+           (a) += looks O(n^2) because a string is immutable: every += should copy the whole text built so far.
+           BUT CPython sometimes resizes the string in place, so (a) may only be a constant factor slower.
+           With a second reference to the string (build_plus_aliased) the in-place trick is impossible -> clear O(n^2).
+
+=== PART B: correctness - all versions give the same text ===
+n =     0: all 5 versions equal: True | length 0
+n =     1: all 5 versions equal: True | length 10
+n =     5: all 5 versions equal: True | length 50
+n =  1000: all 5 versions equal: True | length 12690
+hand check for n = 3: expected 'Item0:Rs0;Item1:Rs1;Item2:Rs2;' -> 'Item0:Rs0;Item1:Rs1;Item2:Rs2;'
+
+=== PART C: timing (best of 3, seconds) for 1,000 / 10,000 / 200,000 lines ===
+   lines    length  (a) += loop   (b) join  (c) f-string+join  (a)/(b)
+    1000     12690      0.00005    0.00003            0.00003     1.47
+   10000    136890      0.00044    0.00032            0.00033     1.37
+  200000   3048890      0.00855    0.01172            0.01040     0.73
+
+=== PART D: when the in-place optimisation is NOT possible (second reference) ===
+Derived: characters copied = sum over lines of the current length = about n^2/2 x average line length
+   lines  += with alias (s)   join (s)    ratio   chars copied (derived)
+    5000             0.0034    0.00015       23              169,725,000
+   10000             0.0138    0.00032       44              684,450,000
+   20000             0.0555    0.00067       83            2,848,900,000
+   40000             0.2658    0.00136      195           11,617,800,000
+Doubling the lines makes the aliased += about 4 times slower (quadratic), while join only doubles.
+
+=== PART E: three runs of the 'Complete the Code' program (200,000 lines), average ===
+run 1: same text: True | length: 3048890 | += time: 0.0111 s join time: 0.0039 s
+run 2: same text: True | length: 3048890 | += time: 0.0094 s join time: 0.0035 s
+run 3: same text: True | length: 3048890 | += time: 0.0098 s join time: 0.0049 s
+average += time = 0.0101 s | average join time = 0.0041 s | ratio = 2.46
+
+=== PART F: alternative - StringIO and writing line by line to a file ===
+method                  time (s)   peak extra memory (MB)
+join (list + join)        0.0101                    15.92
+io.StringIO               0.0071                     6.86
++= loop (a)               0.0096                     3.05
+write to file             0.0410                     0.03
+(memory measured with tracemalloc; the shared input list of 200,000 lines is created before measuring and not counted)
+join: O(n) time, memory = the list of 200,000 small strings + the final text (the largest of the four here). StringIO: O(n) time, one growing buffer.
+file: O(n) time, O(1) memory (only the current line), the statement never exists as one big string.
++= loop: up to O(n^2) characters copied in the worst case (shown in PART D); CPython's in-place resize hides this only for a single-reference local string.
