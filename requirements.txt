@@ -1,0 +1,2 @@
+# Only for Q7/q7_flowchart.py (draws the flowchart PNG). Every other program uses the standard library only.
+matplotlib==3.11.2
