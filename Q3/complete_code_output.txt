@@ -1,0 +1,7 @@
+tn 09 ab 1234   -> TN09AB1234  valid
+KA-01-M-0007    -> KA01M0007   valid
+TN9AB1234       -> TN9AB1234   INVALID
+TN 22 1234 AB   -> TN221234AB  INVALID
+
+receipt format: TN 09 AB 1234
+receipt format: KA 01 M 0007
