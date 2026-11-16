@@ -1,0 +1,93 @@
+=== PART A: design ===
+Base case     : n <= 1 -> 1 way (standing at the bottom, or one step left).
+Recursive case: ways(n) = ways(n-1) + ways(n-2)   (the devotee's last move was 1 step or 2 steps)
+
+=== PART B: correctness check - hand values for n = 1..6 ===
+PREDICTED by hand: ways(1)=1, ways(2)=2 (1+1, 2), ways(3)=3 (111,12,21), ways(4)=5, ways(5)=8, ways(6)=13 (each = sum of the two before)
+ n  by hand  naive   memo   loop  match
+ 1        1      1      1      1  YES
+ 2        2      2      2      2  YES
+ 3        3      3      3      3  YES
+ 4        5      5      5      5  YES
+ 5        8      8      8      8  YES
+ 6       13     13     13     13  YES
+
+=== PART C: call tree for ways(5) (plain recursion) ===
+ways(5)
+   ways(4)
+      ways(3)
+         ways(2)
+            ways(1)
+            ways(0)
+         ways(1)
+      ways(2)
+         ways(1)
+         ways(0)
+   ways(3)
+      ways(2)
+         ways(1)
+         ways(0)
+      ways(1)
+total calls in this tree: 15
+Repeated work: ways(3) is computed 2 times, ways(2) 3 times, ways(1) 5 times, ways(0) 3 times in this tree.
+counted by the program: {5: 1, 4: 1, 3: 2, 2: 3, 1: 5, 0: 3}
+Plain recursion repeats work because ways(n-1) itself calls ways(n-2), and ways(n) calls ways(n-2) again - the same sub-question is asked many times.
+
+=== PART D: growth investigation - function calls ===
+PREDICTION: naive calls = 2*ways(n) - 1  (the leaves of the call tree are ways(n) calls that return 1; a tree whose nodes have 0 or 2 children
+            has leaves - 1 inner nodes). Memoised calls = n + 1  (each value 0..n is computed once; repeats are cache hits that skip the body).
+   n    ways(n)  predicted naive  naive calls  predicted memo  memo calls  ok
+  10         89              177          177              11          11  YES
+  20      10946            21891        21891              21          21  YES
+  25     121393           242785       242785              26          26  YES
+  30    1346269          2692537      2692537              31          31  YES
+Ratio naive(n+1)/naive(n) is about 1.618 (the golden ratio): calls grow like phi^n, i.e. exponentially.
+   calls(21) / calls(20) = 1.6181
+   calls(26) / calls(25) = 1.6180
+   calls(31) / calls(30) = 1.6180
+
+=== PART E: deployment - ways_memo(1000) and the recursion limit ===
+sys.getrecursionlimit() = 1000
+ways_memo(1000) -> RecursionError: maximum recursion depth exceeded
+Why: the first call ways_memo(1000) calls ways_memo(999), which calls ways_memo(998) ... down to ways_memo(1) BEFORE any value is cached.
+That is about 1,000 nested calls (plus the starting frame), and Python allows only 1,000 frames by default.
+after sys.setrecursionlimit(5000): ways_memo(1000) works. digits in the answer: 209 | cache entries: 1001 | time: 0.241 ms
+limit restored to 1000
+
+How far does raising the limit help? Each test runs in a SEPARATE Python process, so a failure cannot stop this program:
+      n  limit set  lru_cache version                            dictionary-memo version                     
+   1000       1100  works, 209 digits                            works, 209 digits                           
+   5000       5100  FAILS: RecursionError: maximum recursion dep works, 1045 digits                          
+  20000      20100  FAILS: RecursionError: maximum recursion dep works, 4180 digits                          
+ 100000     100100  FAILS: RecursionError: maximum recursion dep works, 20899 digits                         
+So raising the limit is not a reliable fix: on this computer (Python 3.12.3) the lru_cache version already fails at n = 5,000 although the limit was raised,
+while a plain dictionary memo keeps working; the result depends on the Python version and the machine.
+
+=== PART F: all three methods for n = 1,000 ===
+memoised (limit raised) : 209 digits, 0.3159 ms, 1,001 function-body calls
+loop (last two values)  : 209 digits, 0.0421 ms, 999 loop steps, no recursion
+same answer: True
+first 20 digits: 70330367711422815821 ... last 20 digits: 91902245245323403501
+plain recursion for n = 1,000: NOT RUN. It would need 2*ways(1000) - 1 calls, a number with 210 digits.
+   measured plain recursion: n = 25: calls =    242785, time = 0.0111 s
+   measured plain recursion: n = 28: calls =   1028457, time = 0.0470 s
+   measured plain recursion: n = 30: calls =   2692537, time = 0.1238 s
+   measured plain recursion: n = 32: calls =   7049155, time = 0.3223 s
+ESTIMATE (not measured): at 0.046 microseconds per call, 2*ways(1000)-1 calls would take about 6.43e+201 seconds,
+   far longer than the age of the universe (about 4.4e17 seconds).
+
+=== PART G: alternative - the loop - time and space ===
+Time : plain recursion O(phi^n) (about 1.618^n); memoised recursion O(n); loop O(n).
+Space: memoised recursion O(n) for the cache AND O(n) stack depth; loop O(1) extra (two variables).
+     n  memo time (ms)  loop time (ms)  memo cache entries  memo max stack depth (measured)  loop stack depth
+   100          0.0305          0.0055                 101                              100                 1
+   500          0.1561          0.0130                 501                              500                 1
+  1000          0.2186          0.0298                1001                             1000                 1
+  2000          0.7462          0.0763                2001                             2000                 1
+(stack depth measured with a dictionary-memo twin of the function that records its deepest call; the loop uses one frame.)
+
+=== PART H: decision ===
+Decision: use the LOOP in the program that prints answers for staircases up to 1,000 steps, and keep the memoised recursion only as the
+readable specification and for tests.  Raising the recursion limit works for 1,000 (shown above) but its effect depends on the
+Python version and machine, it still needs O(n) stack frames, and the lru_cache version fails at n = 5,000 even with a raised limit (table above). The loop needs no limit, no cache
+and finished n = 1,000 in a fraction of a millisecond. Both together: loop for production, memo version cross-checks the loop in tests.
