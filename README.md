@@ -18,7 +18,7 @@ python3 Q5/q5_complete_code.py   &&  python3 Q5/q5_functions.py
 python3 Q6/q6_complete_code.py   &&  python3 Q6/q6_recursion.py
 python3 Q7/q7_redesign.py        &&  python3 Q7/q7_flowchart.py     # flowchart optional
 ```
-On Windows use `python` or `py`. Run Q4 and Q6 from inside their own folder if the script cannot find `q4_complete_code.py`. Each question folder has `output.txt` (real output), `answers.md` (explanations and viva questions) and `screenshots/`.
+On Windows use `python` or `py`. Each question folder has `output.txt` (real output), `answers.md` (explanations and viva questions) and `screenshots/`.
 
 ## Result notes
 | Q | Result |
@@ -32,4 +32,4 @@ On Windows use `python` or `py`. Run Q4 and Q6 from inside their own folder if t
 | Q7 | Recursion redesigned as a loop: 2,692,537 calls → 29 additions at n = 30; n = 100,000 in 66 ms. |
 
 ## Assumptions
-Q1: FULL / PARTIAL decisions, senior case above 200 units = PARTIAL, "above 80" = age > 80. Q5: GST 5%. Q4: (c) is a list of f-string lines joined once. Q2: typing is scripted instead of input() for repeatable output. Timings differ from computer to computer; counts do not. The 5-minute-style estimates in Q6 (plain recursion for n = 1,000) are estimates, not measurements.
+Q1: FULL / PARTIAL decisions, senior case above 200 units = PARTIAL, "above 80" = age > 80. Q5: GST 5%. Q4: (c) is a list of f-string lines joined once. Q2: typing is scripted instead of input() for repeatable output. Timings differ from computer to computer; counts do not. The Q6 time for plain recursion at n = 1,000 is an ESTIMATE (it cannot be run), not a measurement.
