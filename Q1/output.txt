@@ -1,0 +1,41 @@
+=== PART A: predictions (made BEFORE running) vs observed, at every boundary ===
+Boundary units tested: 100, 101, 200, 201 (plus age boundary 80/81 and one low-use house with a ration card)
+house units ration oldest | predicted | if-elif   nested    boolean   match     table     | separate ifs (buggy)   ok?
+H1      100  False     40 | FULL      | FULL      FULL      FULL      FULL      FULL      | ['FULL']               YES
+H2      101   True     45 | PARTIAL   | PARTIAL   PARTIAL   PARTIAL   PARTIAL   PARTIAL   | ['PARTIAL']            YES
+H3      101  False     45 | NONE      | NONE      NONE      NONE      NONE      NONE      | ['NONE']               YES
+H4      200   True     30 | PARTIAL   | PARTIAL   PARTIAL   PARTIAL   PARTIAL   PARTIAL   | ['PARTIAL']            YES
+H5      200  False     30 | NONE      | NONE      NONE      NONE      NONE      NONE      | ['NONE']               YES
+H6      201  False     81 | PARTIAL   | PARTIAL   PARTIAL   PARTIAL   PARTIAL   PARTIAL   | ['PARTIAL']            YES
+H7      201   True     80 | NONE      | NONE      NONE      NONE      NONE      NONE      | ['NONE']               YES
+H8       60   True     35 | FULL      | FULL      FULL      FULL      FULL      FULL      | ['FULL', 'PARTIAL']    YES
+all five correct implementations agree with every prediction: True
+
+=== PART B: why separate ifs can give two results ===
+Each separate 'if' is tested on its own, so more than one condition can be True for the same household.
+In the buggy code the 2nd rule is 'units <= 200 and ration_card' (no lower bound), so a ration-card house with 60 units
+satisfies BOTH rule 1 (units <= 100) and rule 2.  Result: ['FULL', 'PARTIAL'] -> two subsidies
+if-elif-else tests top to bottom and runs only the FIRST branch that is True, then jumps past the rest. Result: FULL
+
+=== PART C: exhaustive check 0..300 units x ration card x age {30, 80, 81} ===
+cases checked: 1806 | cases where the buggy separate-if version gave TWO results: 303 | cases where correct versions disagree: 0
+units range where the bug shows (ration card holders): 0 to 100 -> 101 values of units
+
+=== PART D: design decision (nested if vs combined Boolean) ===
+Lines of code in each function (counted by the program, without def line, docstring and blank lines): nested = 13 | combined Boolean = 5 | if-elif with chained comparison = 6
+Decision: if-elif-else with chained comparisons, and one small conditional expression inside each slab.
+  - slabs are mutually exclusive, so the elif chain reads exactly like the portal rule (one line per slab)
+  - a change of a limit (e.g. 200 -> 250) edits ONE number; the Boolean version repeats units in two places
+  - nested if hides the ration-card and age tests three levels deep and is the hardest to change
+
+=== PART E: alternative concepts - time per decision for k slabs ===
+Derived: if-elif and slab table with a loop test up to k limits -> O(k) per decision (worst case k comparisons); table space O(k);
+match-case with guards behaves like if-elif: O(k). A sorted table with bisect: O(log k).
+ k slabs  worst-case comparisons (loop)  loop time per decision (us)  bisect time per decision (us)
+       3                              3                        0.207                          0.062
+      30                             30                        0.980                          0.074
+     300                            300                        8.141                          0.103
+    3000                           3000                      109.012                          0.116
+The loop's comparisons equal k (worst case) and its time grows about 10x for every 10x more slabs -> O(k).
+For the real rule k = 3, so every version takes well under a microsecond; readability decides.
+Space: if-elif / match = O(1) data (the code itself has k branches); table = O(k) data that can be edited without changing code.
