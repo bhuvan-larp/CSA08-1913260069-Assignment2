@@ -1,0 +1,51 @@
+=== PART A: the bug - a default value is created ONCE, when the function is defined ===
+Before any call: add_item_buggy.__defaults__ = ([],)
+customer 1 orders Tea   -> ['Tea'] | __defaults__ = (['Tea'],)
+customer 2 orders Vada  -> ['Tea', 'Vada'] | __defaults__ = (['Tea', 'Vada'],)
+c1 is c2 (same list object)? True | id(c1) = 139776472306304 id(c2) = 139776472306304
+The default list [] was created once at 'def' time and stored in __defaults__; every call without an order reuses that SAME list,
+so customer 2 sees customer 1's items. Mutable defaults (list, dict, set) are shared; immutable defaults (None, numbers, strings) are safe.
+
+=== PART B: the corrected design, tested with three customers in sequence ===
+Anil    order = ['Tea', 'Vada']  subtotal+GST total = 23.1, GST = 1.1
+Banu    order = ['Dosa']  subtotal+GST total = 42.0, GST = 2.0
+Chitra  order = ['Coffee', 'Samosa', 'Tea']  subtotal+GST total = 40.95, GST = 1.95
+three different list objects: True
+PREDICTED lists: ['Tea', 'Vada'], ['Dosa'], ['Coffee', 'Samosa', 'Tea'] -> True
+hand check Anil: Tea 12 + Vada 10 = 22; GST 5% = 1.1; total = 23.1 -> (23.1, 1.1)
+independent after the buggy-free calls: add_item('Tea') = ['Tea'] | add_item('Vada') = ['Vada']
+
+=== PART C: positional, keyword and default parameters ===
+positional : bill(['Tea','Vada'])               -> (23.1, 1.1)
+default    : the gst_rate=0.05 above is used when it is not given
+keyword    : bill(['Tea','Vada'], gst_rate=0.18)  -> (25.96, 3.96)
+keyword-only: bill(['Tea','Vada'], round_to=0)   -> (23.0, 1.0)
+round_to given by position fails            -> TypeError: bill() takes from 1 to 2 positional arguments but 3 were given
+Use positional for the 1-2 obvious arguments, keyword when the meaning is not obvious or many options exist, defaults for optional settings.
+
+=== PART D: returning more than one value ===
+total, gst = bill(['Dosa','Coffee']) -> 57.75 2.75 | the function returns ONE tuple: tuple (42.0, 2.0)
+hand check: 40 + 15 = 55; GST = 2.75; total = 57.75 -> True
+
+=== PART E: local, global and nonlocal ===
+local_demo() -> local x | global x after it: global x
+read_global_demo() -> global x
+after global_demo(): x = changed by global_demo
+unbound_demo() -> UnboundLocalError: cannot access local variable 'x' where it is not associated with a value
+outer(): (count, first call, second call) = (2, 1, 2)  -> nonlocal changed the enclosing count; inner_wrong did not
+Why 'global' is needed: assigning to a name inside a function makes it local by default; 'global' says use the module-level name.
+Why it is usually avoided: any function can change it, so bugs are hard to trace, functions cannot be tested alone, and the
+order of calls changes results. Pass values in as arguments and return results instead.
+global-counter style: bad_total(10) = 10 , bad_total(10) = 20 (same call, different answers)
+pure style: bill(['Tea']) = (12.6, 0.6) , bill(['Tea']) = (12.6, 0.6) (same call, same answer)
+
+=== PART F: alternatives - order passed explicitly, or kept in a closure ===
+closure customer 1 -> ['Tea', 'Vada', 'Coffee'] | closure customer 2 -> ['Dosa', 'Samosa'] (independent: each call of make_order() makes a new list)
+the list is hidden inside the closure cell: [['Tea', 'Vada', 'Coffee']]
+design                   time per item (us)   peak memory (MB) for 200,000 items
+default None                          0.042                                8.016
+explicit list                         0.039                                8.016
+closure                               0.039                                8.016
+Time: adding one item is one list.append in every design -> O(1) per item (the three rows are within a small constant of each other).
+Space per customer: the n items are stored once = O(n) in every design (same peak memory). Extra: default-None and explicit add O(1);
+the closure adds one function object and one cell (O(1)) per customer and hides the list, so callers cannot change it by accident.
