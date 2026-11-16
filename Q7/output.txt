@@ -1,0 +1,75 @@
+=== PART A: Diagnose the bottleneck (evidence from the original program) ===
+ways_naive(25): total function calls = 242,785  | distinct sub-questions (values 0..25) = 26
+average number of times the SAME sub-question is asked = 9,338
+How many times each sub-question ways(k) is called when we start from ways(25):
+   k   times called   share of all calls
+  25              1                0.00%
+  24              1                0.00%
+  23              2                0.00%
+  20              8                0.00%
+  15             89                0.04%
+  10            987                0.41%
+   5         10,946                4.51%
+   2         46,368               19.10%
+   1         75,025               30.90%
+   0         46,368               19.10%
+calls to the base cases ways(1) and ways(0): 121,393 = 50.0% of ALL calls -> most work is done at the very bottom of the tree
+Count growth with n (original):
+   n        calls       ratio per 5 more steps
+  10          177                             
+  15        1,973 11.15 (5 steps -> x11.09 expected)
+  20       21,891 11.10 (5 steps -> x11.09 expected)
+  25      242,785 11.09 (5 steps -> x11.09 expected)
+  30    2,692,537 11.09 (5 steps -> x11.09 expected)
+Diagnosis: (1) the count of calls grows exponentially, about 1.618 times per extra step (phi^n);
+           (2) most of the work is repeated: ways(1) alone is answered 75,025 times for n = 25 while its answer never changes;
+           (3) ways(n) depends only on the TWO previous answers, so nothing older than ways(n-2) ever needs to be remembered.
+
+=== PART B: Design objective (measurable) ===
+Objective: for n = 30, cut the function calls from 2,692,537 to at most 31 (one step per value) - at least 85,000 times fewer -
+           and the time from about 0.1 s to under 0.01 ms; and the same program must work for n = 1,000 and n = 100,000
+           with NO RecursionError and constant extra memory (two variables).
+
+=== PART C: Revised design ===
+What changed : recursion (top-down, asks the same question again and again) -> bottom-up loop that answers ways(2), ways(3), ... ways(n) once, in order.
+Property used: overlapping sub-problems (the same ways(k) is needed many times) and that each answer depends only on the previous two.
+Extra memory : none - two variables a and b. A table of all values (O(n)) is only needed when many different n are asked.
+New trade-off: no cache is shared between queries, so every query costs O(n) again; many queries -> build the table once (table_up_to).
+Pseudocode:
+   a <- 1 ; b <- 1                      # ways(0), ways(1)
+   repeat for i from 2 to n:
+       a, b <- b, a + b                 # slide the window of two values
+   return b                             # ways(n)   (n <= 1 returns 1)
+Flowchart: q7_flowchart.png (saved in this folder).
+
+=== PART D: Prediction (before implementing) ===
+PREDICTED: additions = n - 1 for n >= 2 (n = 10 -> 9, 20 -> 19, 25 -> 24, 30 -> 29); no recursive calls; answers equal the original.
+PREDICTED: speed-up of at least 10^4 at n = 30 (2,692,537 calls vs 29 steps); calls go from exponential O(phi^n) to linear O(n).
+PREDICTED: for printing ways(1..1000), running the loop separately for every n costs 1+2+...+999 = 499,500 additions; one table pass costs 999.
+
+=== PART E: Implement and validate - same inputs, counts and times ===
+   n  answer equal  original calls  redesign additions  predicted additions  original time (s)  redesign time (s)   speed-up
+  10          True             177                   9                    9           0.000012         0.00000035         33x
+  20          True          21,891                  19                   19           0.001012         0.00000058      1,742x
+  25          True         242,785                  24                   24           0.011139         0.00000068     16,453x
+  30          True       2,692,537                  29                   29           0.122835         0.00000076    161,624x
+Answers also checked for every n from 0 to 30 against the original: True
+
+Large inputs (the original cannot run these):
+n =   1,000: 999 additions, 0.046 ms, answer has 209 digits, recursion depth used = 0
+n = 100,000: 99,999 additions, 66.636 ms, answer has 20,899 digits, recursion depth used = 0
+original ways_naive(1000) -> RecursionError
+
+Printing ways(1..1000): one query per n versus one table pass
+loop for every n separately : 499,500 additions, 17.19 ms
+one table pass (table_up_to): 999 additions, 0.06 ms, memory = list of 1,001 numbers
+table equals separate answers: True
+
+=== PART F: Defend the final design ===
+Objective achieved? Calls for n = 30: 2,692,537 -> 29 additions (about 93,000 times fewer); time at n = 30 reduced by the factor shown in PART E;
+   n = 1,000 and n = 100,000 run without any RecursionError. Every answer matched the original for n = 0..30.
+New costs: (1) no shared cache between queries - every query is O(n) again (the table pass fixes this for repeated queries at O(n) memory);
+   (2) the numbers themselves get large (about 0.69 bits per step), so each addition costs time proportional to the number's size - the
+   'O(n) additions' is not O(n) bit operations; the loop for n = 100,000 is still fast but not instant (see times above).
+Where the original is still preferable: it is a direct copy of the definition ways(n) = ways(n-1) + ways(n-2), the easiest to read and verify;
+   for n up to about 20 (21,891 calls, a few milliseconds) it is perfectly acceptable. I keep it only as the test oracle for the redesign.
