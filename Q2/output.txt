@@ -1,0 +1,81 @@
+=== PART A: predictions (before running) and results for while and for+range(3) designs ===
+scenario                   predicted        | while loop         for loop           | match
+S1 correct on 1st try      VERIFIED / 1     | VERIFIED / 1       VERIFIED / 1       | YES
+S2 wrong, wrong, correct   VERIFIED / 3     | VERIFIED / 3       VERIFIED / 3       | YES
+S3 three wrong -> lock     LOCKED / 3       | LOCKED / 3         LOCKED / 3         | YES
+S4 blanks do not count     LOCKED / 3       | LOCKED / 3         LOCKED / 3         | YES
+S5 blank then correct      VERIFIED / 1     | VERIFIED / 1       VERIFIED / 1       | YES
+
+=== PART B: log of scenario S4 (blanks must not count) - while version ===
+   blank (ignored)
+   attempt 1: wrong (111111)
+   blank (ignored)
+   blank (ignored)
+   attempt 2: wrong (222222)
+   attempt 3: wrong (333333)
+   LOCKED for 30 minutes
+=== for version, same input ===
+   blank (ignored)
+   attempt 1: wrong (111111)
+   blank (ignored)
+   blank (ignored)
+   attempt 2: wrong (222222)
+   attempt 3: wrong (333333)
+   LOCKED for 30 minutes
+
+=== PART C: where break, continue, pass and loop-else are needed ===
+  break    : leaves the loop as soon as the OTP is correct (so the lock code in 'else' does not run)
+  continue : (while version) a blank entry skips the counting and goes back to the loop test
+  pass     : (for version) the empty 'else' branch of the blank test - a placeholder that does nothing
+  loop-else: the else clause of while/for runs only if the loop finished WITHOUT break = three wrong attempts -> lock
+  proof of loop-else: S2 (correct on 3rd try) never prints LOCKED: True
+
+=== PART D: bug when the counter is updated in the wrong place ===
+typed entries: ['', '111111', '482915'] (a blank, one wrong, then the correct OTP)
+PREDICTED: correct counter -> VERIFIED on attempt 2; wrong counter counts the blank -> attempts 1,2,3 used up; still VERIFIED here
+correct version (while) : ('VERIFIED', 2)
+wrong-counter version   : ('VERIFIED', 3)
+typed entries: ['', '111111', '', '482915'] (two blanks, one wrong, then the correct OTP)
+PREDICTED: correct -> VERIFIED (2 counted attempts); wrong counter -> LOCKED after 3 'attempts' (2 blanks + 1 wrong)
+correct version (while) : ('VERIFIED', 2)
+wrong-counter version   : ('LOCKED', 3)
+A customer with the CORRECT OTP is locked out because blank entries used up the attempts.
+
+=== PART E: when is while more natural than for? ===
+  for range(3): the number of tries is fixed in advance and blank entries need an extra inner loop.
+  while attempts < allowed: the loop runs 'until a condition changes', and the limit itself can change.
+  The changed condition below shows this: the limit becomes 5 inside the loop - impossible to change in range(3).
+
+=== PART F: changed condition - 2 extra attempts after a correct security answer ===
+  3 wrong, security OK, then correct on 5th    -> VERIFIED after 5 attempts
+        attempt 1: wrong (1)
+        attempt 2: wrong (2)
+        attempt 3: wrong (3)
+        security question correct -> 2 extra attempts (limit is now 5)
+        attempt 4: wrong (4)
+        attempt 5: correct
+  3 wrong, security OK, 5 wrong -> lock        -> LOCKED after 5 attempts
+        attempt 1: wrong (1)
+        attempt 2: wrong (2)
+        attempt 3: wrong (3)
+        security question correct -> 2 extra attempts (limit is now 5)
+        attempt 4: wrong (4)
+        attempt 5: wrong (5)
+        LOCKED for 30 minutes
+  3 wrong, security WRONG -> lock              -> LOCKED after 3 attempts
+        attempt 1: wrong (1)
+        attempt 2: wrong (2)
+        attempt 3: wrong (3)
+        security question wrong -> no extra attempts
+        LOCKED for 30 minutes
+Design change: replace the fixed 3 by a variable 'allowed' (while loop). Asking the security question happens ONCE (flag).
+
+=== PART G: alternative - recursion: time O(a), stack space O(a) vs O(1) ===
+sys.getrecursionlimit() = 1000
+attempts a  loop time (ms)  recursion time (ms)  max stack depth (recursion)  loop stack frames
+         3          0.0031               0.0052                            4                  1
+       100          0.0068               0.0357                          101                  1
+       500          0.0276               0.1243                          501                  1
+       900          0.0487               0.2165                          901                  1
+recursion with 2000 attempts -> RecursionError: maximum recursion depth exceeded
+Both do one step per attempt, so time is O(a). The loop keeps 1 frame (O(1) stack); recursion keeps a frames (O(a)) and fails near the limit.
